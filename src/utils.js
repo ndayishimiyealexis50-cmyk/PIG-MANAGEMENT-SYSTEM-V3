@@ -1,0 +1,212 @@
+// ─── Firebase Config ───
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCBH-3ql8onw17geHrJXKUwdhN-EVjtg14",
+  authDomain: "my-farm-track.firebaseapp.com",
+  projectId: "my-farm-track",
+  storageBucket: "my-farm-track.firebasestorage.app",
+  messagingSenderId: "529287963399",
+  appId: "1:529287963399:web:733a9828916b61f4525ba2",
+  measurementId: "G-064719MRR4"
+};
+
+const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
+
+// ─── Admin ───
+export const ADMIN_EMAIL = "ndayishimiyealexis50@gmail.com";
+
+export function isAdminEmail(email) {
+  return !!(email && email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase());
+}
+
+export function isAdminUser(user) {
+  return !!(user && (user.role?.toLowerCase().trim() === "admin" || isAdminEmail(user.email)));
+}
+
+// ─── Firestore helpers ───
+import { doc, setDoc, getDoc } from "firebase/firestore";
+
+const FARM_DOC_ID = "farmiq";
+
+export async function fsSet(key, list) {
+  try {
+    const ref = doc(db, "farmiq", FARM_DOC_ID);
+    const snap = await getDoc(ref);
+    const existing = snap.exists() ? snap.data() : {};
+    await setDoc(ref, { ...existing, [key]: list, updatedAt: new Date().toISOString() });
+  } catch (e) {
+    console.warn("fsSet error", e);
+  }
+}
+
+export async function fsGet(key) {
+  try {
+    const ref = doc(db, "farmiq", FARM_DOC_ID);
+    const snap = await getDoc(ref);
+    if (snap.exists()) return snap.data()[key] || [];
+    return [];
+  } catch (e) {
+    return [];
+  }
+}
+
+// ─── Format helpers ───
+export function fmtRWF(n) {
+  if (!n && n !== 0) return "RWF 0";
+  return "RWF " + Math.round(n).toLocaleString("en-RW");
+}
+
+export function fmtNum(n) {
+  if (!n && n !== 0) return "0";
+  return Math.round(n).toLocaleString("en-RW");
+}
+
+export function toDay() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+// ─── API Key (Gemini) ───
+export function getApiKey() { return localStorage.getItem("fiq_apikey") || ""; }
+export function setApiKey(k) { localStorage.setItem("fiq_apikey", k); }
+
+// ─── AI helper ───
+export async function askAI(prompt) {
+  const key = getApiKey();
+  if (!key) return { text: "__NO_KEY__", source: "no_key" };
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 15000);
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${key}`,
+      {
+        method: "POST", signal: ctrl.signal,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 1200 } })
+      }
+    );
+    clearTimeout(t);
+    if (r.status === 400 || r.status === 403) return { text: "__AUTH_ERROR__", source: "auth_error" };
+    if (!r.ok) { const err = await r.json().catch(() => ({})); return { text: `__API_ERROR__:${err?.error?.message || r.status}`, source: "api_error" }; }
+    const d = await r.json();
+    const txt = d.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (txt) return { text: txt, source: "ai" };
+    return { text: "__EMPTY__", source: "empty" };
+  } catch (e) {
+    if (e.name === "AbortError") return { text: "__TIMEOUT__", source: "timeout" };
+    return { text: `__NETWORK__:${e.message}`, source: "network" };
+  }
+}
+
+// ─── Business Profile ───
+export function getBusinessProfile() {
+  try { return JSON.parse(localStorage.getItem("fiq_biz") || "{}"); } catch { return {}; }
+}
+export function setBusinessProfile(p) {
+  localStorage.setItem("fiq_biz", JSON.stringify(p));
+}
+
+// ─── WhatsApp ───
+export function isWAEnabled() {
+  const s = getWASettings();
+  return !!(s.phone && s.apikey);
+}
+export function getWASettings() {
+  try { return JSON.parse(localStorage.getItem("fiq_wa") || "{}"); } catch { return {}; }
+}
+
+// ─── Colors ───
+export const C = {
+  base: "#f0f4f0", surface: "#ffffff", card: "#ffffff", elevated: "#f4f7f4",
+  border: "#dde7dd", borderSoft: "#eaf0ea",
+  accent: "#16a34a", accentSoft: "rgba(22,163,74,.09)",
+  text: "#111a11", muted: "#3d5040", faint: "#526b58",
+  red: "#dc2626", amber: "#d97706", blue: "#2563eb", purple: "#7c3aed", pink: "#db2777",
+};
+
+// ─── Styles ───
+export const S = {
+  app: {
+    fontFamily: "'Plus Jakarta Sans',system-ui,sans-serif",
+    background: "#eef3ee", minHeight: "100vh", display: "flex", color: C.text,
+    backgroundImage: "radial-gradient(ellipse 90% 50% at 50% -8%,rgba(22,163,74,.07) 0%,transparent 60%),radial-gradient(ellipse 50% 30% at 90% 80%,rgba(22,163,74,.03) 0%,transparent 70%)"
+  },
+  side: {
+    width: 238,
+    background: "linear-gradient(175deg,#071510 0%,#0c1f13 40%,#0f2516 100%)",
+    borderRight: "1px solid rgba(74,222,128,.08)", padding: "0", display: "flex", flexDirection: "column", flexShrink: 0,
+    boxShadow: "6px 0 32px rgba(0,0,0,.28),1px 0 0 rgba(74,222,128,.07)",
+    overflowY: "auto"
+  },
+  nb: (a) => ({
+    display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left",
+    padding: "9px 16px 9px 20px",
+    background: a ? "rgba(74,222,128,.14)" : "transparent",
+    border: "none",
+    color: a ? "#c8f0d4" : "rgba(255,255,255,.72)",
+    fontSize: 12.5, cursor: "pointer",
+    borderLeft: a ? "3px solid #4ade80" : "3px solid transparent",
+    marginBottom: 1,
+    transition: "all .16s cubic-bezier(.22,1,.36,1)",
+    fontFamily: "inherit", fontWeight: a ? 650 : 420,
+    letterSpacing: a ? .1 : 0,
+    borderRadius: "0 10px 10px 0",
+  }),
+  main: { flex: 1, padding: "22px 22px 22px 24px", overflowY: "auto", background: "transparent", minWidth: 0, maxWidth: 900 },
+  card: {
+    background: C.surface, border: "1px solid " + C.border, borderRadius: 16, padding: 20, marginBottom: 14,
+    boxShadow: "0 1px 3px rgba(0,0,0,.04),0 4px 16px rgba(0,0,0,.05)",
+    transition: "box-shadow .2s,border-color .2s",
+  },
+  aiCard: {
+    background: "linear-gradient(135deg,#f0fdf4 0%,#fafffe 100%)",
+    border: "1px solid rgba(22,163,74,.22)", borderRadius: 14, padding: 18, marginBottom: 14,
+    boxShadow: "0 2px 12px rgba(22,163,74,.07)",
+  },
+  h1: { fontSize: 22, fontWeight: 800, color: C.text, marginBottom: 4, letterSpacing: -.4 },
+  sub: { fontSize: 13, color: C.muted, marginBottom: 18, lineHeight: 1.5 },
+  g4: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 18 },
+  g3: { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 18 },
+  g2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 },
+  stat: {
+    background: C.surface, border: "1px solid " + C.border, borderRadius: 13, padding: "16px 16px 14px",
+    boxShadow: "0 1px 4px rgba(0,0,0,.05),0 2px 8px rgba(0,0,0,.04)",
+  },
+  sl: { fontSize: 10, color: C.faint, marginBottom: 5, textTransform: "uppercase", letterSpacing: .9, fontWeight: 700 },
+  sv: { fontSize: 22, fontWeight: 800, color: C.accent, letterSpacing: -.3 },
+  btn: (bg) => ({
+    padding: "8px 16px", borderRadius: 9, border: "none", background: bg || C.accent, color: "#fff",
+    fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit",
+    transition: "opacity .15s,transform .12s,box-shadow .15s", marginRight: 7,
+    boxShadow: "0 2px 6px rgba(0,0,0,.12)", letterSpacing: .1,
+  }),
+  inp: {
+    background: "#fff", border: "1.5px solid " + C.border, color: C.text,
+    borderRadius: 9, padding: "9px 12px", width: "100%", fontSize: 13,
+    fontFamily: "inherit", outline: "none", boxSizing: "border-box",
+    transition: "border-color .2s,box-shadow .2s",
+  },
+  lbl: { fontSize: 10.5, color: C.faint, textTransform: "uppercase", display: "block", marginBottom: 5, letterSpacing: .8, fontWeight: 700 },
+  row: {
+    display: "flex", alignItems: "center", justifyContent: "space-between",
+    padding: "10px 14px", background: C.elevated, borderRadius: 9, marginBottom: 5, fontSize: 13,
+    border: "1px solid " + C.border, transition: "background .18s,box-shadow .18s",
+  },
+  ui: { marginTop: "auto", padding: "14px 16px", borderTop: "1px solid rgba(255,255,255,.09)" },
+  loader: { display: "inline-block", width: 13, height: 13, border: "2px solid rgba(22,163,74,.18)", borderTop: "2px solid " + C.accent, borderRadius: "50%" },
+  tab: (a) => ({
+    flex: 1, padding: "7px 10px", border: "none", borderRadius: 8,
+    background: a ? C.accent : "transparent", color: a ? "#fff" : C.muted,
+    fontWeight: a ? 700 : 500, fontSize: 12, cursor: "pointer", fontFamily: "inherit",
+    textTransform: "capitalize", transition: "all .18s", letterSpacing: .1,
+  }),
+};
