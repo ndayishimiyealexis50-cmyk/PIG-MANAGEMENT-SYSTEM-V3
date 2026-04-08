@@ -6,21 +6,24 @@ import Crops from './pages/Crops.jsx'
 import Inventory from './pages/Inventory.jsx'
 import Reports from './pages/Reports.jsx'
 import Settings from './pages/Settings.jsx'
+import AuthGuard from './components/AuthGuard.jsx'
 
 export default function App() {
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)' }}>
-      <Navbar />
-      <main style={{ padding: '1.5rem', maxWidth: '900px', margin: '0 auto' }}>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/piggery" element={<Piggery />} />
-          <Route path="/crops" element={<Crops />} />
-          <Route path="/inventory" element={<Inventory />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/settings" element={<Settings />} />
-        </Routes>
-      </main>
-    </div>
+    <AuthGuard>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)' }}>
+        <Navbar />
+        <main style={{ padding: '1.5rem', maxWidth: '900px', margin: '0 auto' }}>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/piggery" element={<Piggery />} />
+            <Route path="/crops" element={<Crops />} />
+            <Route path="/inventory" element={<Inventory />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/settings" element={<Settings />} />
+          </Routes>
+        </main>
+      </div>
+    </AuthGuard>
   )
 }
