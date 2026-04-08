@@ -1,0 +1,45 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --green-dark: #1a2e1a;
+  --green-mid: #2d5a27;
+  --green-light: #4a8c3f;
+  --accent: #f5c842;
+  --text: #f0ede4;
+  --muted: #a0a89a;
+  --bg: #111a0f;
+  --card: #1e2e1c;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-family: 'DM Sans', sans-serif;
+}
+
+h1, h2, h3 {
+  font-family: 'Playfair Display', serif;
+}
+
+button {
+  font-family: 'DM Sans', sans-serif;
+}
+
+input, select, textarea {
+  font-family: 'DM Sans', sans-serif;
+  outline: none;
+}
+
+input:focus, select:focus {
+  border-color: var(--green-light) !important;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
